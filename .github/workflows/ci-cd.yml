@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: agrosmart-backend
     steps:
       - uses: actions/checkout@v4
 
@@ -41,14 +41,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: reporte-pruebas-backend
-          path: backend/target/surefire-reports
+          path: agrosmart-backend/target/surefire-reports
           if-no-files-found: ignore
 
       - name: Guardar el .jar generado
         uses: actions/upload-artifact@v4
         with:
           name: backend-jar
-          path: backend/target/*.jar
+          path: agrosmart-backend/target/*.jar
 
   # ---------------------------------------------------------------
   # 2. FRONTEND: instalacion + build (Angular)
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: agrosmart-frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -66,7 +66,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: agrosmart-frontend/package-lock.json
 
       - name: Instalar dependencias
         run: npm ci
@@ -78,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
-          path: frontend/dist/agrosmart-frontend/browser
+          path: agrosmart-frontend/dist/agrosmart-frontend/browser
 
   # ---------------------------------------------------------------
   # 3. DOCKER: construir las imagenes (y publicarlas solo en main)
@@ -111,7 +111,7 @@ jobs:
       - name: Imagen del backend
         uses: docker/build-push-action@v6
         with:
-          context: backend
+          context: ./agrosmart-backend
           push: ${{ env.PUBLICAR == 'true' }}
           tags: |
             ghcr.io/${{ env.REPO }}/backend:latest
@@ -122,7 +122,7 @@ jobs:
       - name: Imagen del frontend
         uses: docker/build-push-action@v6
         with:
-          context: frontend
+          context: ./agrosmart-frontend
           push: ${{ env.PUBLICAR == 'true' }}
           tags: |
             ghcr.io/${{ env.REPO }}/frontend:latest

@@ -16,7 +16,7 @@ services:
       retries: 10
 
   backend:
-    build: ./backend
+    build: ./agrosmart-backend
     depends_on:
       db:
         condition: service_healthy
@@ -31,7 +31,7 @@ services:
       - "8080:8080"
 
   frontend:
-    build: ./frontend
+    build: ./agrosmart-frontend
     depends_on:
       - backend
     ports:
