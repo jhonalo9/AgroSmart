@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: agrosmart-db
+    environment:
+      POSTGRES_DB: agrosmart
+      POSTGRES_USER: agrosmart
+      POSTGRES_PASSWORD: agrosmart
+    ports:
+      - "5433:5432"
+    volumes:
+      - agrosmart_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrosmart -d agrosmart"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  agrosmart_data:

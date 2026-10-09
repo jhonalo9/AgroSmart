@@ -1,0 +1,346 @@
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo"><img src="logo.png" alt="Logo" class="img-fluid"></div>
+      <div>
+        <div class="brand-name">Agro<span>Smart</span></div>
+        <div class="brand-sub">AgroAndes S.A.C.</div>
+      </div>
+    </div>
+    <div class="sidebar-section">Parcelas monitoreadas</div>
+    <div class="parcela-list">
+      @for (p of resumen(); track p.parcela) {
+        <button class="parcela-item" [class.active]="p.parcela === seleccionada()" (click)="seleccionar(p.parcela)">
+          <span class="status-dot {{ p.estado }}"></span>
+          <span class="info">
+            <b>Parcela {{ p.parcela }}</b>
+            <small>{{ etiqueta(p.estado) }} · Suelo {{ p.humedad_suelo.toFixed(0) }} %</small>
+          </span>
+          <span class="value">{{ p.temperatura.toFixed(1) }}°</span>
+        </button>
+      } @empty {
+        <p class="sidebar-vacio">Aún no hay parcelas con datos.</p>
+      }
+    </div>
+    <div class="sidebar-footer">
+      <span class="pt"></span>
+      <span>Sistema operativo · IoT en vivo</span>
+    </div>
+  </aside>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-title">
+      <h1>{{ titulo() }}</h1>
+      <p>{{ subtitulo() }}</p>
+    </div>
+    <div class="topbar-actions">
+      <span class="conn-status" [class.off]="!conectado() || pausado()">
+        <span class="dot"></span>
+        <span class="conn-txt">
+          @if (pausado()) { Actualización en pausa }
+          @else if (conectado()) { Conectado · cada 3 s }
+          @else { Sin conexión con el backend }
+        </span>
+      </span>
+      <button class="btn-icon btn-volver"
+        [class.show]="modoFoco() && vista() === '3d'"
+        (click)="volverGeneral()"
+        title="Volver a vista general"
+        aria-label="Volver a vista general">
+  <svg lucideArrowLeft [size]="20"></svg>
+</button>
+      <div class="vista-toggle" role="tablist" aria-label="Cambiar vista">
+        <button [class.active]="vista() === '3d'" role="tab" (click)="cambiarVista('3d')" title="Vista 3D">🏡 <span class="txt">3D</span></button>
+        <button [class.active]="vista() === 'tendencia'"
+          role="tab" (click)="cambiarVista('tendencia')"
+          title="Vista tendencia">
+    <svg lucideTrendingUp [size]="18"></svg>
+    <span class="txt">Tendencia</span>
+  </button>
+      </div>
+      <button class="btn-icon"
+        [class.alerta-critica]="hayCritica()"
+        (click)="abrirAlertas()"
+        title="Ver alertas" aria-label="Ver alertas">
+        <svg lucideBell [size]="20"></svg>
+        @if (sinLeer() > 0) {
+          <span class="notif-badge">
+            {{ sinLeer() > 9 ? '9+' : sinLeer() }}
+          </span>
+        }
+      </button>
+      <button class="btn-icon"
+        (click)="alternarPausa()"
+        [title]="pausado() ? 'Reanudar actualización' : 'Pausar actualización'">
+      @if (pausado()) {
+        <svg lucidePlay [size]="18"></svg>
+      } @else {
+        <svg lucidePause [size]="18"></svg>
+      }
+    </button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+    @if (!cargado() && !conectado()) {
+      <div class="card aviso">
+        No se pudo conectar con el backend. Verifica que esté corriendo en <code>localhost:8080</code>.
+      </div>
+    }
+
+    <!-- VISTA 3D -->
+    <div class="vista" [class.activa]="vista() === '3d'">
+      <app-escena-3d [parcelas]="resumen()" (focoChange)="alCambiarFoco($event)" />
+
+      <section class="kpi-grid" style="margin-top:18px;">
+        @if (!modoFoco() || !actual()) {
+          <div class="kpi">
+            <div class="kpi-label">
+            <svg lucideThermometer [size]="18"></svg>
+            Temp. promedio
+          </div>
+            <div class="kpi-value">{{ promedios().hay ? promedios().t.toFixed(1) : '--' }}<small>°C</small></div>
+            <div class="kpi-bar temp"><i [style.width.%]="promedios().t / 50 * 100"></i></div>
+            <div class="kpi-foot">De {{ resumen().length }} parcelas</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label"><span class="icon">💧</span> Hum. ambiental prom.</div>
+            <div class="kpi-value">{{ promedios().hay ? promedios().a.toFixed(1) : '--' }}<small>%</small></div>
+            <div class="kpi-bar amb"><i [style.width.%]="promedios().a"></i></div>
+            <div class="kpi-foot">Rango óptimo: 40–70 %</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">
+  <svg lucideSprout [size]="18"></svg>
+  Hum. suelo prom.
+</div>
+            <div class="kpi-value">{{ promedios().hay ? promedios().s.toFixed(1) : '--' }}<small>%</small></div>
+            <div class="kpi-bar suelo"><i [style.width.%]="promedios().s"></i></div>
+            <div class="kpi-foot">Umbral crítico: &lt; 20 %</div>
+          </div>
+          <div class="kpi estado">
+            <div class="kpi-label">
+  <svg lucideMapPin [size]="18"></svg>
+  Estado de la granja
+</div>
+      
+            <div class="kpi-value" style="gap:8px;font-size:14px;flex-wrap:wrap;">
+              <span class="estado-pill NORMAL" style="font-size:12px;">{{ conteo().NORMAL }} OK</span>
+              <span class="estado-pill ATENCION" style="font-size:12px;">{{ conteo().ATENCION }} Alerta</span>
+              <span class="estado-pill CRITICA" style="font-size:12px;">{{ conteo().CRITICA }} Críticas</span>
+            </div>
+            <div class="kpi-foot">Clic en una parcela 3D para verla en detalle</div>
+          </div>
+        } @else {
+          @let a = actual()!;
+          <div class="kpi">
+            <div class="kpi-label"><span class="icon">🌡️</span> Temperatura</div>
+            <div class="kpi-value">{{ a.temperatura.toFixed(1) }}<small>°C</small></div>
+            <div class="kpi-bar temp"><i [style.width.%]="a.temperatura / 50 * 100"></i></div>
+            <div class="kpi-foot">Alerta térmica: &gt; 35 °C</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label"><span class="icon">💧</span> Humedad ambiental</div>
+            <div class="kpi-value">{{ a.humedad_ambiental.toFixed(1) }}<small>%</small></div>
+            <div class="kpi-bar amb"><i [style.width.%]="a.humedad_ambiental"></i></div>
+            <div class="kpi-foot">Rango óptimo: 40–70 %</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label"><span class="icon">🌱</span> Humedad del suelo</div>
+            <div class="kpi-value">{{ a.humedad_suelo.toFixed(1) }}<small>%</small></div>
+            <div class="kpi-bar suelo"><i [style.width.%]="a.humedad_suelo"></i></div>
+            <div class="kpi-foot">Umbral crítico: &lt; 20 %</div>
+          </div>
+          <div class="kpi estado">
+            <div class="kpi-label"><span class="icon">{{ emoji(a.estado) }}</span> Estado general</div>
+            <div class="kpi-value"><span class="estado-pill {{ a.estado }}">{{ etiqueta(a.estado) }}</span></div>
+            <div class="kpi-foot">Última lectura {{ fmtHora(a.fecha_hora) }}</div>
+          </div>
+        }
+      </section>
+    </div>
+
+    <!-- VISTA TENDENCIA -->
+    <div class="vista" [class.activa]="vista() === 'tendencia'">
+      <div class="vista-tendencia-card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg lucideChartNoAxesCombined [size]="18"></svg>
+            Tendencia · Parcela {{ seleccionada() ?? '—' }}
+          </div>
+          <div class="scene-hint">Últimas 20 lecturas registradas</div>
+        </div>
+
+        @if (actual(); as a) {
+          <div class="tendencia-resumen">
+            <div class="mini temp"><span class="lbl">🌡️ Temperatura</span><span class="num">{{ a.temperatura.toFixed(1) }}<small> °C</small></span></div>
+            <div class="mini amb"><span class="lbl">💧 Hum. ambiental</span><span class="num">{{ a.humedad_ambiental.toFixed(1) }}<small> %</small></span></div>
+            <div class="mini suelo"><span class="lbl">🌱 Hum. suelo</span><span class="num">{{ a.humedad_suelo.toFixed(1) }}<small> %</small></span></div>
+            <div class="mini estado">
+              <span class="lbl">{{ emoji(a.estado) }} Estado</span>
+              <span class="estado-pill {{ a.estado }}" style="font-size:13px;align-self:flex-start;">{{ etiqueta(a.estado) }}</span>
+            </div>
+          </div>
+        }
+
+        <div class="chart-wrap">
+          @if (historial().length > 1) {
+            @let g = grafica();
+            <svg class="chart" [class.compacto]="g.compacto" [attr.viewBox]="'0 0 ' + g.ancho + ' ' + g.alto" preserveAspectRatio="xMidYMid meet" role="img"
+                 aria-label="Gráfica de temperatura y humedad">
+              <defs>
+                <linearGradient id="gradSuelo" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#1f7a4d" stop-opacity="0.18"/>
+                  <stop offset="100%" stop-color="#1f7a4d" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              @for (l of g.guias; track l.v) {
+                <line [attr.x1]="g.margen" [attr.x2]="g.xCritico" [attr.y1]="l.y" [attr.y2]="l.y" class="guia"/>
+                <text x="8" [attr.y]="l.y + 4" class="eje">{{ l.v }}</text>
+              }
+              <line [attr.x1]="g.margen" [attr.x2]="g.xCritico" [attr.y1]="g.yCritico" [attr.y2]="g.yCritico" class="critico"/>
+              <text [attr.x]="g.xCritico" [attr.y]="g.yCritico - 6" text-anchor="end" class="critico-t">umbral crítico 20 %</text>
+              <polygon [attr.points]="g.area" fill="url(#gradSuelo)"/>
+              <polyline [attr.points]="g.temperatura" class="s-temp"/>
+              <polyline [attr.points]="g.ambiente" class="s-amb"/>
+              <polyline [attr.points]="g.suelo" class="s-suelo"/>
+              @for (e of g.ejeX; track $index) {
+                <text [attr.x]="e.x" [attr.y]="g.alto - 10" text-anchor="middle" class="eje">{{ e.t }}</text>
+              }
+            </svg>
+          } @else {
+            <p class="sin-datos">Reuniendo lecturas para graficar…</p>
+          }
+        </div>
+
+        <div class="legend">
+          <span><i class="c-temp"></i>Temperatura (°C)</span>
+          <span><i class="c-amb"></i>Humedad ambiental (%)</span>
+          <span><i class="c-suelo"></i>Humedad del suelo (%)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg lucideClipboardList [size]="18"></svg>
+          Últimas lecturas · Parcela {{ seleccionada() ?? '—' }}
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Hora</th><th>Temp °C</th><th>Hum. amb. %</th><th>Hum. suelo %</th><th>Estado</th></tr></thead>
+          <tbody>
+            @for (r of ultimas(); track r.id) {
+              <tr>
+                <td>{{ fmtHora(r.fecha_hora) }}</td>
+                <td>{{ r.temperatura.toFixed(1) }}</td>
+                <td>{{ r.humedad_ambiental.toFixed(1) }}</td>
+                <td>{{ r.humedad_suelo.toFixed(1) }}</td>
+                <td><span class="badge {{ r.estado }}">{{ etiqueta(r.estado) }}</span></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted);">Sin lecturas registradas</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      <b>Umbrales:</b> humedad de suelo ≥ 50 % NORMAL · 20–49 % ATENCIÓN · &lt; 20 % CRÍTICA. Temperatura &gt; 35 °C eleva a ATENCIÓN.
+      Las recomendaciones son de apoyo y deben verificarse con el responsable agrícola.
+    </div>
+  </main>
+</div>
+
+<!-- MODAL ALERTAS -->
+<div class="modal-overlay" [class.open]="modalAlertas()" role="dialog" aria-modal="true" (click)="$event.target === $event.currentTarget && cerrarAlertas()">
+  <div class="modal">
+    <header class="modal-header">
+      <div class="modal-header-icon alerta">🔔</div>
+      <div class="modal-header-text">
+        <h2>Centro de alertas</h2>
+        <p>Cambios de estado detectados desde que abriste el dashboard</p>
+      </div>
+      <button class="modal-close" (click)="cerrarAlertas()" aria-label="Cerrar">✕</button>
+    </header>
+    <div class="modal-body">
+      <div class="alertas-resumen">
+        <div class="stat crit"><span class="num">{{ resumenAlertas().CRITICA }}</span><span class="lbl">Críticas</span></div>
+        <div class="stat warn"><span class="num">{{ resumenAlertas().ATENCION }}</span><span class="lbl">Atención</span></div>
+        <div class="stat ok"><span class="num">{{ resumenAlertas().NORMAL }}</span><span class="lbl">Recuperadas</span></div>
+      </div>
+      <ul class="alertas-list">
+        @for (a of alertas(); track $index) {
+          <li class="alerta-item {{ a.estado }}">
+            <div class="ico">{{ a.icono }}</div>
+            <div class="content">
+              <b>Parcela {{ a.parcela }} · {{ etiqueta(a.estado) }}</b>
+              <p>{{ a.mensaje }}</p>
+            </div>
+            <time>{{ a.hora | date:'HH:mm:ss' }}</time>
+          </li>
+        } @empty {
+          <li class="alerta-item NORMAL">
+            <div class="ico">✅</div>
+            <div class="content"><b>Sin alertas</b><p>No hay cambios de estado recientes en el sistema.</p></div>
+          </li>
+        }
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT FLOTANTE -->
+<button class="chat-fab" [class.open]="chatAbierto()" (click)="alternarChat()" aria-label="Abrir asistente AgroSmart">
+  <span class="fab-icon open"><svg lucideMessageCircle ></svg></span>
+  <span class="fab-icon close"><svg lucideX ></svg></span>
+  @if (noLeidos() > 0 && !chatAbierto()) { <span class="fab-badge">{{ noLeidos() > 9 ? '9+' : noLeidos() }}</span> }
+</button>
+
+<div class="chat-window" [class.open]="chatAbierto()" role="dialog" aria-label="Asistente AgroSmart">
+  <header class="chat-header">
+    <div class="chat-header-avatar">🤖<span class="online-dot"></span></div>
+    <div class="chat-header-info">
+      <h3>Asistente AgroSmart</h3>
+      <p>En línea · Parcela {{ seleccionada() ?? '—' }}</p>
+    </div>
+    <div class="chat-header-actions">
+      <button (click)="chatAbierto.set(false)" title="Minimizar">—</button>
+      <button (click)="chatAbierto.set(false)" title="Cerrar">✕</button>
+    </div>
+  </header>
+  <div class="chat-body" #hilo>
+    @for (m of mensajes(); track $index) {
+      <div class="chat-msg {{ m.rol }}">
+        <div class="avatar">{{ m.rol === 'usuario' ? '👤' : m.rol === 'error' ? '⚠️' : '🤖' }}</div>
+        <div class="bubble-wrap">
+          <div class="bubble">{{ m.texto }}</div>
+          <time>{{ m.hora | date:'HH:mm' }}</time>
+        </div>
+      </div>
+    }
+    @if (escribiendo()) {
+      <div class="chat-msg bot typing">
+        <div class="avatar">🤖</div>
+        <div class="bubble-wrap"><div class="bubble"><span></span><span></span><span></span></div></div>
+      </div>
+    }
+  </div>
+  <div class="chat-chips">
+    @for (s of sugerencias(); track s) {
+      <button class="chat-chip" [disabled]="escribiendo()" (click)="enviar(entrada, s)">{{ s }}</button>
+    }
+  </div>
+  <div class="chat-input-row">
+    <input #entrada type="text" maxlength="500" placeholder="Escribe tu consulta…"
+           [disabled]="escribiendo()" (keydown.enter)="enviar(entrada)">
+    <button [disabled]="escribiendo()" (click)="enviar(entrada)" title="Enviar">➤</button>
+  </div>
+</div>

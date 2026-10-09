@@ -1,0 +1,41 @@
+# Levanta TODO el sistema con Docker:  docker compose -f docker-compose.deploy.yml up --build
+# Frontend: http://localhost:4200   API: http://localhost:8080/api/parcelas
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: agrosmart
+      POSTGRES_USER: agrosmart
+      POSTGRES_PASSWORD: agrosmart
+    volumes:
+      - agrosmart_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrosmart -d agrosmart"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/agrosmart
+      DB_USER: agrosmart
+      DB_PASSWORD: agrosmart
+      MQTT_BROKER: tcp://broker.hivemq.com:1883
+      MQTT_TOPIC: agroandes/jhonatan-mercedes-2026/+/lecturas
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "4200:80"
+
+volumes:
+  agrosmart_data:

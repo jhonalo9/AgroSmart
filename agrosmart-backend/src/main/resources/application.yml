@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: agrosmart-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/agrosmart}
+    username: ${DB_USER:agrosmart}
+    password: ${DB_PASSWORD:agrosmart}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+server:
+  port: 8080
+
+agrosmart:
+  mqtt:
+    enabled: true
+    broker: ${MQTT_BROKER:tcp://broker.hivemq.com:1883}
+    # El comodin + recibe todas las parcelas (P01, P02, P03...)
+    topic: ${MQTT_TOPIC:agroandes/jhonatan-mercedes-2026/+/lecturas}
+  cors:
+    origin: ${CORS_ORIGIN:http://localhost:4200}
+
+
+  llm:
+      api-key: ${ANTHROPIC_API_KEY:}
+      model: ${LLM_MODEL:claude-haiku-5-5}
+      url: https://api.anthropic.com/v1/messages
+      max-tokens: 500

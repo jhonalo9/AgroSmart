@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "author": "AgroSmart AI",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-dht22", "id": "dht1", "top": -95, "left": 130, "attrs": {} },
+    { "type": "wokwi-potentiometer", "id": "pot1", "top": 40, "left": -190, "attrs": {} }
+  ],
+  "connections": [
+    ["esp:TX", "$serialMonitor:RX", "", []],
+    ["esp:RX", "$serialMonitor:TX", "", []],
+    ["dht1:VCC", "esp:3V3", "red", []],
+    ["dht1:GND", "esp:GND.1", "black", []],
+    ["dht1:SDA", "esp:15", "green", []],
+    ["pot1:VCC", "esp:3V3", "red", []],
+    ["pot1:GND", "esp:GND.1", "black", []],
+    ["pot1:SIG", "esp:34", "green", []]
+  ],
+  "dependencies": {}
+}
