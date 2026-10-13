@@ -23,8 +23,17 @@ agrosmart:
     origin: ${CORS_ORIGIN:http://localhost:4200}
 
 
+  #llm:
+   #   api-key: ${ANTHROPIC_API_KEY:}
+    #  model: ${LLM_MODEL:claude-haiku-5-5}
+     # url: https://api.anthropic.com/v1/messages
+      #max-tokens: 500
+
+
   llm:
-      api-key: ${ANTHROPIC_API_KEY:}
-      model: ${LLM_MODEL:claude-haiku-5-5}
-      url: https://api.anthropic.com/v1/messages
+      api-key: ${GEMINI_API_KEY:}
+      model: ${LLM_MODEL:gemini-3.8-flash}  
+      url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent
       max-tokens: 500
+
+ 

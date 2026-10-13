@@ -19,11 +19,13 @@ public class LecturaService {
     private final LecturaRepository repo;
     private final EvaluadorEstado evaluador;
     private final Validator validator;
+    private final ParcelaService parcelas;
 
-    public LecturaService(LecturaRepository repo, EvaluadorEstado evaluador, Validator validator) {
+    public LecturaService(LecturaRepository repo, EvaluadorEstado evaluador, Validator validator, ParcelaService parcelas) {
         this.repo = repo;
         this.evaluador = evaluador;
         this.validator = validator;
+        this.parcelas = parcelas;
     }
 
     /** Valida, calcula el estado y guarda. Se usa desde MQTT y desde el POST HTTP. */
@@ -34,8 +36,10 @@ public class LecturaService {
         }
         Estado estado = evaluador.evaluar(dto.temperatura(), dto.humedadSuelo());
         // Se usa la hora del servidor: el reloj del nodo simulado no es confiable.
-        return repo.save(new Lectura(dto.parcela(), dto.temperatura(),
+        Lectura guardada = repo.save(new Lectura(dto.parcela(), dto.temperatura(),
                 dto.humedadAmbiental(), dto.humedadSuelo(), estado, Instant.now()));
+        parcelas.asegurar(dto.parcela());
+        return guardada;
     }
 
     public List<String> parcelas() {

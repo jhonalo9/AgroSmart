@@ -7,14 +7,15 @@ import java.time.Instant;
 public record LecturaResponse(
         Long id,
         String parcela,
+        Cultivo cultivo,
         Double temperatura,
         @JsonProperty("humedad_ambiental") Double humedadAmbiental,
         @JsonProperty("humedad_suelo") Double humedadSuelo,
         Estado estado,
         @JsonProperty("fecha_hora") Instant fechaHora
 ) {
-    public static LecturaResponse de(Lectura l) {
-        return new LecturaResponse(l.getId(), l.getParcela(), l.getTemperatura(),
+    public static LecturaResponse de(Lectura l, Cultivo cultivo) {
+        return new LecturaResponse(l.getId(), l.getParcela(), cultivo, l.getTemperatura(),
                 l.getHumedadAmbiental(), l.getHumedadSuelo(), l.getEstado(), l.getFechaHora());
     }
 }
